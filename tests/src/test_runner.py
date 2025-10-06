@@ -175,6 +175,26 @@ class TestTie(unittest.TestCase):
         check_tie_votes("tie_equal.csv")
 
 
+def check_party_name(csv_name: str):
+    """
+    “Liberal”, “liberal”, and “ Liberal ” should aggregate to the same party.
+    """
+    input_csv = INPUT_DIR / "party_name_equal" / csv_name
+    _, federal_rows = run_program(input_csv)
+
+    if not federal_rows:
+        print(f"Failure: (Party normalization) {csv_name}: No federal results")
+        return
+
+    parties = { (r.get("Party") or "").strip().lower() for r in federal_rows }
+    if len(parties) > 2:  # should be {liberal, conservative} at most; here only liberal and maybe others
+        print(f"Failure: (Party normalization) {csv_name}: Party casing/spacing not normalized: {parties}")
+
+class TestPartyNames(unittest.TestCase):
+
+    def test_party_names(self):
+        check_party_name("party_names.csv")
+
 if __name__ == "__main__":
 
     print("="*10 + ' Attributes ' + "="*10)

@@ -179,7 +179,7 @@ def check_party_name(csv_name: str):
     """
     “Liberal”, “liberal”, and “ Liberal ” should aggregate to the same party.
     """
-    input_csv = INPUT_DIR / "party_name_equal" / csv_name
+    input_csv = INPUT_DIR / "party_names" / csv_name
     _, federal_rows = run_program(input_csv)
 
     if not federal_rows:
@@ -194,6 +194,24 @@ class TestPartyNames(unittest.TestCase):
 
     def test_party_names(self):
         check_party_name("party_names.csv")
+
+
+def check_riding_id_name_mismatch(csv_name: str):
+    input_csv = INPUT_DIR / "riding_id_name_equal" / csv_name
+    riding_rows, federal_rows = run_program(input_csv)
+
+    # Many implementations abort and produce no outputs on this validation error.
+    # If the program still generates normal-looking outputs, flag it.
+    if riding_rows or federal_rows:
+        print(f"Failure: (Riding ID-name consistency) {csv_name}: Produced outputs despite ID↔name mismatch")
+
+
+class TestRidingIdNameConsistency(unittest.TestCase):
+    def test_id_name_mismatch(self):
+        check_riding_id_name_mismatch("different_name.csv")
+
+    def test_id_name_mismatch(self):
+        check_riding_id_name_mismatch("different_id.csv")
 
 if __name__ == "__main__":
 

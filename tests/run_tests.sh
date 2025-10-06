@@ -5,7 +5,7 @@ MODULE_NAME="src.test_runner"  # or "src.test_runner" if you run inside /tests
 
 # hardcode your class names here in order
 classes=(TestRecountThreshold TestSingleCandidate TestInvaliVotes TestTie TestPartyNames TestRidingIdNameConsistency TestBadHeader TestMissMatchRowLength 
-TestDuplicateCandidates TestFederalRoles)
+TestDuplicateCandidates TestFederalRoles TestDuplicateCandidate)
 
 if [ $# -eq 0 ]; then
   echo "Running all tests..."

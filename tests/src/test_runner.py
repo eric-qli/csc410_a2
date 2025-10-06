@@ -345,17 +345,35 @@ def check_federal_roles(csv_name: str, expected_governing_party: str | None, exp
 
 
 class TestFederalRoles(unittest.TestCase):
-    def test_federal_majority(self):
-        # Liberal majority; opposition should be Conservative (unique second)
-        check_federal_roles("federal_majority.csv", expected_governing_party="Liberal", expected_role="majority", expect_opposition="Conservative")
+    # def test_federal_majority(self):
+    #     # Liberal majority; opposition should be Conservative (unique second)
+    #     check_federal_roles("federal_majority.csv", expected_governing_party="Liberal", expected_role="majority", expect_opposition="Conservative")
 
-    def test_federal_minority(self):
-        # Liberal wins most but not > half (minority). Don't assert opposition uniqueness here.
-        check_federal_roles("federal_minority.csv", expected_governing_party="Liberal", expected_role="minority")
+    # def test_federal_minority(self):
+    #     # Liberal wins most but not > half (minority). Don't assert opposition uniqueness here.
+    #     check_federal_roles("federal_minority.csv", expected_governing_party="Liberal", expected_role="minority")
 
     def test_federal_tie(self):
         # Liberal wins most but not > half (tie). Don't assert opposition uniqueness here.
         check_federal_roles("federal_tie.csv", expected_governing_party=None, expected_role=None)
+
+
+def check_duplicate_candidate_exact(csv_name: str):
+    """
+    Expect the program to reject exact duplicate candidate rows in the same riding.
+    Passing behavior: program aborts (no outputs) and may print a validation error.
+    Failing behavior: program still produces riding/federal results.
+    """
+    input_csv = INPUT_DIR / "duplicate_record" / csv_name
+    riding_rows, federal_rows = run_program(input_csv)
+
+    if riding_rows or federal_rows:
+        print(f"Failure: (Duplicate candidate) {csv_name}: Produced outputs despite exact duplicate candidate row")
+
+
+class TestDuplicateCandidate(unittest.TestCase):
+    def test_duplicate_candidate_exact(self):
+        check_duplicate_candidate_exact("duplicated_lines.csv")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,8 @@ import csv
 import subprocess
 from typing import List, Dict, Tuple
 
+import unittest.test
+
 
 ROOT = Path(__file__).resolve().parents[2]
 print(f"ROOT: {ROOT}")
@@ -27,6 +29,12 @@ print("="*30)
 def run_program(input_csv: Path) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
     riding_output = OUTPUT_DIR / "riding_results.csv"
     federal_output = OUTPUT_DIR / "federal_results.csv"
+
+    for path in (riding_output, federal_output):
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
 
     cp = subprocess.run(
         ["python3.11", str(pyc_path), str(input_csv), str(riding_output), str(federal_output)],
@@ -174,6 +182,9 @@ class TestTie(unittest.TestCase):
     def test_tie_votes(self):
         check_tie_votes("tie_equal.csv")
 
+    def test_tie_votes_zero(self):
+        check_tie_votes("zero_tie.csv")
+
 
 def check_party_name(csv_name: str):
     """
@@ -189,6 +200,7 @@ def check_party_name(csv_name: str):
     parties = { (r.get("Party") or "").strip().lower() for r in federal_rows }
     if len(parties) > 2:  # should be {liberal, conservative} at most; here only liberal and maybe others
         print(f"Failure: (Party normalization) {csv_name}: Party casing/spacing not normalized: {parties}")
+
 
 class TestPartyNames(unittest.TestCase):
 
@@ -207,11 +219,52 @@ def check_riding_id_name_mismatch(csv_name: str):
 
 
 class TestRidingIdNameConsistency(unittest.TestCase):
-    def test_id_name_mismatch(self):
+    def test_id_name_mismatch_name(self):
         check_riding_id_name_mismatch("different_name.csv")
 
-    def test_id_name_mismatch(self):
+    def test_id_name_mismatch_id(self):
         check_riding_id_name_mismatch("different_id.csv")
+
+
+def check_bad_header(csv_name):
+    rows,_=run_program(INPUT_DIR/"bad_headers"/csv_name)
+    if rows: print(f"Failure: (Header) {csv_name}: produced output despite bad header")
+
+
+class TestBadHeader(unittest.TestCase):
+
+    def test_bad_header(self):
+        check_bad_header("bad_header_equal.csv")
+
+
+def check_missmatch_row_length(csv_name):
+    input_csv = INPUT_DIR / "row_length_mismatch" / csv_name
+    _, federal_rows = run_program(input_csv)
+
+    # Many implementations abort and produce no outputs on this validation error.
+    # If the program still generates normal-looking outputs, flag it.
+    if federal_rows:
+        print(f"Failure: (Missing value check) {csv_name}: Produced outputs despite there are null in cells")
+
+class TestMissMatchRowLength(unittest.TestCase):
+    def test_missmatch_row_length(self):
+        check_missmatch_row_length("row_length_less.csv")
+
+
+def check_duplicate_candidates(csv_name):
+    input_csv = INPUT_DIR / "duplicate_candidate" / csv_name
+    _, federal_rows = run_program(input_csv)
+
+    # Many implementations abort and produce no outputs on this validation error.
+    # If the program still generates normal-looking outputs, flag it.
+    if federal_rows:
+        print(f"Failure: (Duplicate candidates) {csv_name}: Produced outputs despite there are duplicate candidates under different parties")
+
+
+class TestDuplicateCandidates(unittest.TestCase):
+    def test_duplicate_candidates(self):
+        check_duplicate_candidates("duplicate_candidate.csv")
+
 
 if __name__ == "__main__":
 

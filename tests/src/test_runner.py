@@ -345,17 +345,17 @@ def check_federal_roles(csv_name: str, expected_governing_party: str | None, exp
 
 
 class TestFederalRoles(unittest.TestCase):
-    # def test_federal_majority(self):
-    #     # Liberal majority; opposition should be Conservative (unique second)
-    #     check_federal_roles("federal_majority.csv", expected_governing_party="Liberal", expected_role="majority", expect_opposition="Conservative")
+    def test_federal_majority(self):
+        # Liberal majority; opposition should be Conservative (unique second)
+        check_federal_roles("federal_majority.csv", expected_governing_party="Liberal", expected_role="majority", expect_opposition="Conservative")
 
     def test_federal_minority(self):
         # Liberal wins most but not > half (minority). Don't assert opposition uniqueness here.
         check_federal_roles("federal_minority.csv", expected_governing_party="Liberal", expected_role="minority")
 
-    # def test_federal_tie(self):
-    #     # Liberal wins most but not > half (tie). Don't assert opposition uniqueness here.
-    #     check_federal_roles("federal_tie.csv", expected_governing_party=None, expected_role=None)
+    def test_federal_tie(self):
+        # Liberal wins most but not > half (tie). Don't assert opposition uniqueness here.
+        check_federal_roles("federal_tie.csv", expected_governing_party=None, expected_role=None)
 
 
 if __name__ == "__main__":

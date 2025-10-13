@@ -145,6 +145,108 @@ class TestInvalidRidingNum(unittest.TestCase):
     def test_negative_ridingnum(self):
         check_invalid_ridingnum("negative_riding_num.csv")
 
+##
+## missing R5
+##
+
+# R6 might need more code
+def check_party_name(csv_name: str):
+    """
+    “Liberal”, “liberal”, and “ Liberal ” should aggregate to the same party.
+    """
+    input_csv = INPUT_DIR / "party_names" / csv_name
+    _, federal_rows = run_program(input_csv)
+
+    if not federal_rows:
+        print(f"Failure: (Party normalization) {csv_name}: No federal results")
+        return
+
+    parties = { (r.get("Party") or "").strip().lower() for r in federal_rows }
+    if len(parties) > 2:  # should be {liberal, conservative} at most; here only liberal and maybe others
+        print(f"Failure: (Party normalization) {csv_name}: Party casing/spacing not normalized: {parties}")
+
+
+class TestPartyNames(unittest.TestCase):
+
+    def test_party_names(self):
+        check_party_name("party_names.csv")
+
+
+# R7
+def check_invalid_votes(csv_name: str):
+    """
+    Runs election.pyc with malformed vote counts.
+    Expected: the program should reject or flag invalid votes, 
+    not silently produce normal results.
+    """
+    input_csv = INPUT_DIR / 'invalid_votes' / csv_name
+    riding_rows, _ = run_program(input_csv)
+
+    # Case 1: no output produced
+    if not riding_rows:
+        # print(f"Failure: (Vote validation) {csv_name}: Program produced no riding output (possible crash)")
+        return
+
+    # Case 2: program silently accepted bad votes
+    for row in riding_rows:
+        try:
+            votes = float(row.get("Votes", ""))
+            if votes < 0 or not float(votes).is_integer():
+                print(f"Failure: (Vote validation) {csv_name}: Invalid vote values accepted ({votes})")
+        except Exception:
+            # If 'Votes' field missing or non-numeric, it’s OK — means it caught the issue
+            continue
+
+
+class TestInvaliVotes(unittest.TestCase):
+    def test_float_votes(self):
+        check_invalid_votes("votes_float_equal.csv")
+
+    def test_negatve_votes(self):
+        check_invalid_votes("votes_negative_equal.csv")
+
+    def test_nonnum_votes(self):
+        check_invalid_votes("votes_nonnum_equal.csv")
+
+
+# R8
+def check_riding_id_name_mismatch(csv_name: str):
+    input_csv = INPUT_DIR / "riding_id_name_equal" / csv_name
+    riding_rows, federal_rows = run_program(input_csv)
+
+    # Many implementations abort and produce no outputs on this validation error.
+    # If the program still generates normal-looking outputs, flag it.
+    if riding_rows or federal_rows:
+        print(f"Failure: (Riding ID-name consistency) {csv_name}: Produced outputs despite ID↔name mismatch")
+
+
+class TestRidingIdNameConsistency(unittest.TestCase):
+    def test_id_name_mismatch_name(self):
+        check_riding_id_name_mismatch("different_name.csv")
+
+
+# R9
+def check_duplicate_candidates(csv_name):
+    input_csv = INPUT_DIR / "duplicate_candidate" / csv_name
+    _, federal_rows = run_program(input_csv)
+
+    # Many implementations abort and produce no outputs on this validation error.
+    # If the program still generates normal-looking outputs, flag it.
+    if federal_rows:
+        print(f"Failure: (Duplicate candidates) {csv_name}: Produced outputs despite there are duplicate candidates under different parties")
+
+
+class TestDuplicateCandidates(unittest.TestCase):
+    def test_duplicate_candidates(self):
+        check_duplicate_candidates("duplicate_candidate.csv")
+
+##
+## missing R10
+##
+
+
+
+
 
 # R17
 def check_recount_threshold(csv_name: str, expect_recount: bool):
@@ -192,145 +294,12 @@ class TestRecountThreshold(unittest.TestCase):
     #     check_recount_threshold("recount_above_0p1.csv", expect_recount=False)
 
 
-def check_single_candidate(csv_name: str):
-    input_csv = INPUT_DIR / 'single_candidate' / csv_name
-    riding_rows, _ = run_program(input_csv)
-
-    if len(riding_rows) != 1:
-        print(f"Failure: (Output shape) {csv_name}: Expected 1 riding, got {len(riding_rows)}")
-        return
-
-
-class TestSingleCandidate(unittest.TestCase):
-
-    def test_single_candidate(self):
-        check_single_candidate("single_candidate.csv")
-
-
-# R7
-def check_invalid_votes(csv_name: str):
-    """
-    Runs election.pyc with malformed vote counts.
-    Expected: the program should reject or flag invalid votes, 
-    not silently produce normal results.
-    """
-    input_csv = INPUT_DIR / 'invalid_votes' / csv_name
-    riding_rows, _ = run_program(input_csv)
-
-    # Case 1: no output produced
-    if not riding_rows:
-        # print(f"Failure: (Vote validation) {csv_name}: Program produced no riding output (possible crash)")
-        return
-
-    # Case 2: program silently accepted bad votes
-    for row in riding_rows:
-        try:
-            votes = float(row.get("Votes", ""))
-            if votes < 0 or not float(votes).is_integer():
-                print(f"Failure: (Vote validation) {csv_name}: Invalid vote values accepted ({votes})")
-        except Exception:
-            # If 'Votes' field missing or non-numeric, it’s OK — means it caught the issue
-            continue
-
-
-class TestInvaliVotes(unittest.TestCase):
-    def test_float_votes(self):
-        check_invalid_votes("votes_float_equal.csv")
-
-    def test_negatve_votes(self):
-        check_invalid_votes("votes_negative_equal.csv")
-
-    def test_nonnum_votes(self):
-        check_invalid_votes("votes_nonnum_equal.csv")
-
-
-def check_tie_votes(csv_name: str):
-    """
-    Runs election.pyc with malformed vote counts.
-    Expected: the program should reject or flag invalid votes, 
-    not silently produce normal results.
-    """
-    input_csv = INPUT_DIR / 'tie' / csv_name
-    riding_rows, _ = run_program(input_csv)
-
-    if len(riding_rows) != 1:
-        return
-
-    row = riding_rows[0]
-    outcome = (row.get("Outcome") or "").strip().lower()
-    if outcome != "recount":
-        print(f"Failure: (Tie rule) {csv_name}: Expected 'Recount' for tied votes, got '{row.get('Outcome')}'")
-
-
-class TestTie(unittest.TestCase):
-    def test_tie_votes(self):
-        check_tie_votes("tie_equal.csv")
-
-    def test_tie_votes_zero(self):
-        check_tie_votes("zero_tie.csv")
-
-
-def check_party_name(csv_name: str):
-    """
-    “Liberal”, “liberal”, and “ Liberal ” should aggregate to the same party.
-    """
-    input_csv = INPUT_DIR / "party_names" / csv_name
-    _, federal_rows = run_program(input_csv)
-
-    if not federal_rows:
-        print(f"Failure: (Party normalization) {csv_name}: No federal results")
-        return
-
-    parties = { (r.get("Party") or "").strip().lower() for r in federal_rows }
-    if len(parties) > 2:  # should be {liberal, conservative} at most; here only liberal and maybe others
-        print(f"Failure: (Party normalization) {csv_name}: Party casing/spacing not normalized: {parties}")
-
-
-class TestPartyNames(unittest.TestCase):
-
-    def test_party_names(self):
-        check_party_name("party_names.csv")
-
-
-def check_riding_id_name_mismatch(csv_name: str):
-    input_csv = INPUT_DIR / "riding_id_name_equal" / csv_name
-    riding_rows, federal_rows = run_program(input_csv)
-
-    # Many implementations abort and produce no outputs on this validation error.
-    # If the program still generates normal-looking outputs, flag it.
-    if riding_rows or federal_rows:
-        print(f"Failure: (Riding ID-name consistency) {csv_name}: Produced outputs despite ID↔name mismatch")
-
-
-class TestRidingIdNameConsistency(unittest.TestCase):
-    def test_id_name_mismatch_name(self):
-        check_riding_id_name_mismatch("different_name.csv")
-
-    # there is a bug
-    def test_id_name_mismatch_id(self):
-        check_riding_id_name_mismatch("different_id.csv")
-
-
-
-def check_duplicate_candidates(csv_name):
-    input_csv = INPUT_DIR / "duplicate_candidate" / csv_name
-    _, federal_rows = run_program(input_csv)
-
-    # Many implementations abort and produce no outputs on this validation error.
-    # If the program still generates normal-looking outputs, flag it.
-    if federal_rows:
-        print(f"Failure: (Duplicate candidates) {csv_name}: Produced outputs despite there are duplicate candidates under different parties")
-
-
-class TestDuplicateCandidates(unittest.TestCase):
-    def test_duplicate_candidates(self):
-        check_duplicate_candidates("duplicate_candidate.csv")
-
 
 def normalization(s: str) -> str:
     return (s or "").strip().lower()
 
 
+# R29 others
 def check_federal_roles(csv_name: str, expected_governing_party: str | None, expected_role: str | None, expect_opposition: str | None = None):
     input_csv = INPUT_DIR / "federal_seats" / csv_name
     _, federal_rows = run_program(input_csv)
@@ -425,24 +394,34 @@ class TestFederalRoles(unittest.TestCase):
     #     check_federal_roles("federal_tie.csv", expected_governing_party=None, expected_role=None)
 
 
-def check_duplicate_candidate_exact(csv_name: str):
+# R29 tie
+def check_tie_votes(csv_name: str):
     """
-    Expect the program to reject exact duplicate candidate rows in the same riding.
-    Passing behavior: program aborts (no outputs) and may print a validation error.
-    Failing behavior: program still produces riding/federal results.
+    Runs election.pyc with malformed vote counts.
+    Expected: the program should reject or flag invalid votes, 
+    not silently produce normal results.
     """
-    input_csv = INPUT_DIR / "duplicate_record" / csv_name
-    riding_rows, federal_rows = run_program(input_csv)
+    input_csv = INPUT_DIR / 'tie' / csv_name
+    riding_rows, _ = run_program(input_csv)
 
-    if riding_rows or federal_rows:
-        print(f"Failure: (Duplicate candidate) {csv_name}: Produced outputs despite exact duplicate candidate row")
+    if len(riding_rows) != 1:
+        return
+
+    row = riding_rows[0]
+    outcome = (row.get("Outcome") or "").strip().lower()
+    if outcome != "recount":
+        print(f"Failure: (Tie rule) {csv_name}: Expected 'Recount' for tied votes, got '{row.get('Outcome')}'")
 
 
-class TestDuplicatelines(unittest.TestCase):
-    def test_duplicate_candidate_exact(self):
-        check_duplicate_candidate_exact("duplicated_lines.csv")
+class TestTie(unittest.TestCase):
+    def test_tie_votes(self):
+        check_tie_votes("tie_equal.csv")
+
+    def test_tie_votes_zero(self):
+        check_tie_votes("zero_tie.csv")
 
 
+# R29 independent
 def check_independent_ignored(csv_name: str):
     """
     Expect the program to ignore independent candidates when assigning government/opposition roles.
@@ -493,66 +472,6 @@ class TestIndependent(unittest.TestCase):
         check_only_independent("independent_case.csv")
 
 
-def check_uncontested(csv_name: str):
-    """
-    Spec R17 (Uncontested):
-      - Input CSV has a single candidate in a riding.
-      - Output riding row must have Outcome="Uncontested".
-      - Winner / Votes / %vote are filled (R18–R20).
-      - %margin is empty (R22).
-    """
-    input_csv = INPUT_DIR / "uncontested" / csv_name
-    riding_rows, federal_rows = run_program(input_csv)
-
-    # Expect exactly one riding row produced for this single-riding input
-    if len(riding_rows) != 1:
-        print(f"Failure: (Uncontested) {csv_name}: Expected 1 riding row, got {len(riding_rows)}")
-        return
-
-    row = riding_rows[0]
-
-    # Outcome must be "Uncontested"
-    outcome = (row.get("Outcome") or "").strip().lower()
-    if outcome != "uncontested":
-        print(f"Failure: (Uncontested) {csv_name}: Outcome={row.get('Outcome')!r} (expected 'Uncontested')")
-
-    # Winner / Votes / %vote must be present (non-empty)
-    winner = (row.get("Winner") or "").strip()
-    votes_raw = (row.get("Votes") or "").strip()
-    pct_vote = (row.get("%vote") or row.get("%Vote") or "").strip()  # tolerate header casing
-
-    if not winner:
-        print(f"Failure: (Uncontested) {csv_name}: 'Winner' is empty")
-    if not votes_raw:
-        print(f"Failure: (Uncontested) {csv_name}: 'Votes' is empty")
-    else:
-        try:
-            _ = int(votes_raw.replace(",", ""))  # allow thousands separators
-        except Exception:
-            print(f"Failure: (Uncontested) {csv_name}: 'Votes' not an integer: {votes_raw!r}")
-
-    if not pct_vote:
-        print(f"Failure: (Uncontested) {csv_name}: '%vote' is empty")
-    else:
-        # Optional sanity: uncontested should be ~100%
-        try:
-            pv = float(pct_vote.strip("%"))
-            if not (99.9 <= pv <= 100.0+1e-9):  # allow rounding tolerance
-                print(f"Failure: (Uncontested) {csv_name}: '%vote' expected ≈ 100%, got {pct_vote!r}")
-        except Exception:
-            print(f"Failure: (Uncontested) {csv_name}: '%vote' not parseable: {pct_vote!r}")
-
-    # %margin must be empty for Uncontested
-    margin = (row.get("%margin") or "").strip()
-    if margin != "":
-        print(f"Failure: (Uncontested) {csv_name}: '%margin' should be empty, got {margin!r}")
-
-
-class TestUncontested(unittest.TestCase):
-    def test_single_candidate(self):
-        # CSV located at tests/test_input/uncontested/single_candidate.csv
-        check_uncontested("single_candidate.csv")
-
 
 def _to_int(s: str) -> int:
     return int((s or "").replace(",", "").strip())
@@ -562,6 +481,7 @@ def _to_float(s: str) -> float:
     return float((s or "").replace("%", "").strip())
 
 
+# R30
 def check_federal_total(csv_name: str):
     """
     Spec R30 (Final 'total' row).
@@ -636,6 +556,103 @@ class TestFederalTotal(unittest.TestCase):
     def test_total_row(self):
         # CSV at tests/test_input/total/multi_ridings.csv
         check_federal_total("multi_ridings.csv")
+
+
+
+## unclassified 
+
+def check_single_candidate(csv_name: str):
+    input_csv = INPUT_DIR / 'single_candidate' / csv_name
+    riding_rows, _ = run_program(input_csv)
+
+    if len(riding_rows) != 1:
+        print(f"Failure: (Output shape) {csv_name}: Expected 1 riding, got {len(riding_rows)}")
+        return
+
+
+class TestSingleCandidate(unittest.TestCase):
+
+    def test_single_candidate(self):
+        check_single_candidate("single_candidate.csv")
+
+
+def check_duplicate_candidate_exact(csv_name: str):
+    """
+    Expect the program to reject exact duplicate candidate rows in the same riding.
+    Passing behavior: program aborts (no outputs) and may print a validation error.
+    Failing behavior: program still produces riding/federal results.
+    """
+    input_csv = INPUT_DIR / "duplicate_record" / csv_name
+    riding_rows, federal_rows = run_program(input_csv)
+
+    if riding_rows or federal_rows:
+        print(f"Failure: (Duplicate candidate) {csv_name}: Produced outputs despite exact duplicate candidate row")
+
+
+class TestDuplicatelines(unittest.TestCase):
+    def test_duplicate_candidate_exact(self):
+        check_duplicate_candidate_exact("duplicated_lines.csv")
+
+
+def check_uncontested(csv_name: str):
+    """
+    Spec R17 (Uncontested):
+      - Input CSV has a single candidate in a riding.
+      - Output riding row must have Outcome="Uncontested".
+      - Winner / Votes / %vote are filled (R18–R20).
+      - %margin is empty (R22).
+    """
+    input_csv = INPUT_DIR / "uncontested" / csv_name
+    riding_rows, federal_rows = run_program(input_csv)
+
+    # Expect exactly one riding row produced for this single-riding input
+    if len(riding_rows) != 1:
+        print(f"Failure: (Uncontested) {csv_name}: Expected 1 riding row, got {len(riding_rows)}")
+        return
+
+    row = riding_rows[0]
+
+    # Outcome must be "Uncontested"
+    outcome = (row.get("Outcome") or "").strip().lower()
+    if outcome != "uncontested":
+        print(f"Failure: (Uncontested) {csv_name}: Outcome={row.get('Outcome')!r} (expected 'Uncontested')")
+
+    # Winner / Votes / %vote must be present (non-empty)
+    winner = (row.get("Winner") or "").strip()
+    votes_raw = (row.get("Votes") or "").strip()
+    pct_vote = (row.get("%vote") or row.get("%Vote") or "").strip()  # tolerate header casing
+
+    if not winner:
+        print(f"Failure: (Uncontested) {csv_name}: 'Winner' is empty")
+    if not votes_raw:
+        print(f"Failure: (Uncontested) {csv_name}: 'Votes' is empty")
+    else:
+        try:
+            _ = int(votes_raw.replace(",", ""))  # allow thousands separators
+        except Exception:
+            print(f"Failure: (Uncontested) {csv_name}: 'Votes' not an integer: {votes_raw!r}")
+
+    if not pct_vote:
+        print(f"Failure: (Uncontested) {csv_name}: '%vote' is empty")
+    else:
+        # Optional sanity: uncontested should be ~100%
+        try:
+            pv = float(pct_vote.strip("%"))
+            if not (99.9 <= pv <= 100.0+1e-9):  # allow rounding tolerance
+                print(f"Failure: (Uncontested) {csv_name}: '%vote' expected ≈ 100%, got {pct_vote!r}")
+        except Exception:
+            print(f"Failure: (Uncontested) {csv_name}: '%vote' not parseable: {pct_vote!r}")
+
+    # %margin must be empty for Uncontested
+    margin = (row.get("%margin") or "").strip()
+    if margin != "":
+        print(f"Failure: (Uncontested) {csv_name}: '%margin' should be empty, got {margin!r}")
+
+
+class TestUncontested(unittest.TestCase):
+    def test_single_candidate(self):
+        # CSV located at tests/test_input/uncontested/single_candidate.csv
+        check_uncontested("single_candidate.csv")
 
 
 if __name__ == "__main__":

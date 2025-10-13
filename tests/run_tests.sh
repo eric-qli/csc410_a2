@@ -1,27 +1,20 @@
 #!/bin/bash
-# Run tests for a2 project
+# run_tests.sh
+# Usage: ./run_tests.sh ../bytecode_3_11/election.pyc
 
-MODULE_NAME="src.test_runner"  # or "src.test_runner" if you run inside /tests
+set -e
 
-# hardcode your class names here in order
-classes=(TestRecountThreshold TestSingleCandidate TestInvaliVotes TestTie TestPartyNames TestRidingIdNameConsistency TestBadHeader TestMissMatchRowLength 
-TestDuplicateCandidates TestFederalRoles TestDuplicateCandidate)
-
-if [ $# -eq 0 ]; then
-  echo "Running all tests..."
-  python -m unittest "$MODULE_NAME"
-  exit 0
+if [ "$#" -ne 1 ]; then
+    echo "Usage: ./run_tests.sh <path_to_election.pyc>"
+    exit 1
 fi
 
-index=$1
-if (( index < 1 || index > ${#classes[@]} )); then
-  echo "Invalid input. Choose from:"
-  for i in "${!classes[@]}"; do
-    printf "  %d) %s\n" $((i+1)) "${classes[$i]}"
-  done
-  exit 1
+FILE_NAME=$(basename "$1")
+
+if [ "$FILE_NAME" != "election.pyc" ]; then
+    echo "Wrong file to test"
+    exit 1
 fi
 
-class_name="${classes[$((index-1))]}"
-echo "Running test class: $class_name"
-python -m unittest "$MODULE_NAME.$class_name"
+echo "Running tests using: $1"
+python3 src/test_runner.py "$1"
